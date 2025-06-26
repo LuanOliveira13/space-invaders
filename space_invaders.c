@@ -19,10 +19,8 @@ const int NAVE_H = 50;
 const int ALIEN_W = 50;
 const int ALIEN_H = 25;
 
-const int ALIEN_ROWS = 5;
-const int ALIEN_COLS = 5;
-const int ALIEN_SPACING_X = 80;
-const int ALIEN_SPACING_Y = 55;
+const int ALIEN_SPACING_X = 80;  // 50 (alien width) + 30 (space) = 80
+const int ALIEN_SPACING_Y = 55;  // 25 (alien height) + 30 (space) = 55
 const int ALIEN_START_X = 0;
 const int ALIEN_START_Y = 0;
 
@@ -31,6 +29,12 @@ const int TIRO_H = 10;
 const float TIRO_VEL = 8;
 
 const float FPS = 60;
+
+typedef enum {
+    DIFICULDADE_FACIL,
+    DIFICULDADE_NORMAL,
+    DIFICULDADE_DIFICIL
+} Dificuldade;
 
 typedef struct Nave{
     float x;
@@ -52,6 +56,14 @@ typedef struct Tiro{
     ALLEGRO_COLOR cor;
 } Tiro;
 
+typedef struct Jogo{
+    int alien_rows;
+    int alien_cols;
+    float alien_vel;
+    int pontos_por_alien;
+    Alien aliens[6][6]; // Max size for hard difficulty
+} Jogo;
+
 
 void init_nave(Nave *nave){
     nave->x = SCREEN_W/2;
@@ -61,19 +73,19 @@ void init_nave(Nave *nave){
     nave->cor = al_map_rgb(0, 0, 255);
 }
 
-void init_alien(Alien *alien, int row, int col){
+void init_alien(Alien *alien, int row, int col, float vel){
     alien->x = ALIEN_START_X + col * ALIEN_SPACING_X;
     alien->y = ALIEN_START_Y + row * ALIEN_SPACING_Y;
-    alien->x_vel = 5;
+    alien->x_vel = vel;
     alien->y_vel = ALIEN_H;
     alien->cor = al_map_rgb(rand()%256, rand()%256, rand()%256);
     alien->ativo = 1;
 }
 
-void init_aliens(Alien aliens[ALIEN_ROWS][ALIEN_COLS]){
-    for(int i = 0; i < ALIEN_ROWS; i++){
-        for(int j = 0; j < ALIEN_COLS; j++){
-            init_alien(&aliens[i][j], i, j);
+void init_aliens(Jogo *jogo){
+    for(int i = 0; i < jogo->alien_rows; i++){
+        for(int j = 0; j < jogo->alien_cols; j++){
+            init_alien(&jogo->aliens[i][j], i, j, jogo->alien_vel);
         }
     }
 }
@@ -128,14 +140,15 @@ int colisao_tiro_alien(Tiro tiro, Alien alien){
             tiro_y_bottom > alien_y_top);
 }
 
-void check_tiro_aliens_collision(Tiro *tiro, Alien aliens[ALIEN_ROWS][ALIEN_COLS]){
+void check_tiro_aliens_collision(Tiro *tiro, Jogo *jogo, int *pontuacao){
     if(!tiro->ativo) return;
     
-    for(int i = 0; i < ALIEN_ROWS; i++){
-        for(int j = 0; j < ALIEN_COLS; j++){
-            if(colisao_tiro_alien(*tiro, aliens[i][j])){
-                aliens[i][j].ativo = 0; // Destroy alien
+    for(int i = 0; i < jogo->alien_rows; i++){
+        for(int j = 0; j < jogo->alien_cols; j++){
+            if(colisao_tiro_alien(*tiro, jogo->aliens[i][j])){
+                jogo->aliens[i][j].ativo = 0; // Destroy alien
                 tiro->ativo = 0; // Destroy shot
+                (*pontuacao) += jogo->pontos_por_alien; // Add points based on difficulty
                 return; // Exit after first collision
             }
         }
@@ -150,20 +163,20 @@ void draw_alien(Alien alien){
     }
 }
 
-void draw_aliens(Alien aliens[ALIEN_ROWS][ALIEN_COLS]){
-    for(int i = 0; i < ALIEN_ROWS; i++){
-        for(int j = 0; j < ALIEN_COLS; j++){
-            draw_alien(aliens[i][j]);
+void draw_aliens(Jogo *jogo){
+    for(int i = 0; i < jogo->alien_rows; i++){
+        for(int j = 0; j < jogo->alien_cols; j++){
+            draw_alien(jogo->aliens[i][j]);
         }
     }
 }
 
-int check_boundary_collision(Alien aliens[ALIEN_ROWS][ALIEN_COLS]){
-    for(int i = 0; i < ALIEN_ROWS; i++){
-        for(int j = 0; j < ALIEN_COLS; j++){
-            if(aliens[i][j].ativo){
-                if(aliens[i][j].x + ALIEN_W + aliens[i][j].x_vel > SCREEN_W || 
-                   aliens[i][j].x + aliens[i][j].x_vel < 0) {
+int check_boundary_collision(Jogo *jogo){
+    for(int i = 0; i < jogo->alien_rows; i++){
+        for(int j = 0; j < jogo->alien_cols; j++){
+            if(jogo->aliens[i][j].ativo){
+                if(jogo->aliens[i][j].x + ALIEN_W + jogo->aliens[i][j].x_vel > SCREEN_W || 
+                   jogo->aliens[i][j].x + jogo->aliens[i][j].x_vel < 0) {
                     return 1;
                 }
             }
@@ -172,34 +185,34 @@ int check_boundary_collision(Alien aliens[ALIEN_ROWS][ALIEN_COLS]){
     return 0;
 }
 
-void update_aliens(Alien aliens[ALIEN_ROWS][ALIEN_COLS]){
+void update_aliens(Jogo *jogo){
     // Check if any alien hits the boundary
-    if(check_boundary_collision(aliens)){
+    if(check_boundary_collision(jogo)){
         // Reverse direction and descend for all aliens
-        for(int i = 0; i < ALIEN_ROWS; i++){
-            for(int j = 0; j < ALIEN_COLS; j++){
-                if(aliens[i][j].ativo){
-                    aliens[i][j].x_vel *= -1;
-                    aliens[i][j].y += aliens[i][j].y_vel;
+        for(int i = 0; i < jogo->alien_rows; i++){
+            for(int j = 0; j < jogo->alien_cols; j++){
+                if(jogo->aliens[i][j].ativo){
+                    jogo->aliens[i][j].x_vel *= -1;
+                    jogo->aliens[i][j].y += jogo->aliens[i][j].y_vel;
                 }
             }
         }
     }
     
     // Move all aliens horizontally
-    for(int i = 0; i < ALIEN_ROWS; i++){
-        for(int j = 0; j < ALIEN_COLS; j++){
-            if(aliens[i][j].ativo){
-                aliens[i][j].x += aliens[i][j].x_vel;
+    for(int i = 0; i < jogo->alien_rows; i++){
+        for(int j = 0; j < jogo->alien_cols; j++){
+            if(jogo->aliens[i][j].ativo){
+                jogo->aliens[i][j].x += jogo->aliens[i][j].x_vel;
             }
         }
     }
 }
 
-int colisao_alien_solo(Alien aliens[ALIEN_ROWS][ALIEN_COLS]) {
-    for(int i = 0; i < ALIEN_ROWS; i++){
-        for(int j = 0; j < ALIEN_COLS; j++){
-            if(aliens[i][j].ativo && aliens[i][j].y + ALIEN_H > SCREEN_H - GRASS_H) {
+int colisao_alien_solo(Jogo *jogo) {
+    for(int i = 0; i < jogo->alien_rows; i++){
+        for(int j = 0; j < jogo->alien_cols; j++){
+            if(jogo->aliens[i][j].ativo && jogo->aliens[i][j].y + ALIEN_H > SCREEN_H - GRASS_H) {
                 return 1;
             }
         }
@@ -207,21 +220,21 @@ int colisao_alien_solo(Alien aliens[ALIEN_ROWS][ALIEN_COLS]) {
     return 0;
 }
 
-int colisao_alien_nave(Alien aliens[ALIEN_ROWS][ALIEN_COLS], Nave nave) {
+int colisao_alien_nave(Jogo *jogo, Nave nave) {
     float nave_y_base = SCREEN_H - GRASS_H/2;
     float nave_y_top = nave_y_base - NAVE_H;
     float nave_y_bottom = nave_y_base;
     float nave_x_left = nave.x - NAVE_W/2;
     float nave_x_right = nave.x + NAVE_W/2;
     
-    for(int i = 0; i < ALIEN_ROWS; i++){
-        for(int j = 0; j < ALIEN_COLS; j++){
-            if(aliens[i][j].ativo){
+    for(int i = 0; i < jogo->alien_rows; i++){
+        for(int j = 0; j < jogo->alien_cols; j++){
+            if(jogo->aliens[i][j].ativo){
                 // Check if alien rectangle overlaps with ship triangle area
-                float alien_x_left = aliens[i][j].x;
-                float alien_x_right = aliens[i][j].x + ALIEN_W;
-                float alien_y_top = aliens[i][j].y;
-                float alien_y_bottom = aliens[i][j].y + ALIEN_H;
+                float alien_x_left = jogo->aliens[i][j].x;
+                float alien_x_right = jogo->aliens[i][j].x + ALIEN_W;
+                float alien_y_top = jogo->aliens[i][j].y;
+                float alien_y_bottom = jogo->aliens[i][j].y + ALIEN_H;
                 
                 // Simple rectangle collision check
                 if(alien_x_left < nave_x_right && 
@@ -234,6 +247,17 @@ int colisao_alien_nave(Alien aliens[ALIEN_ROWS][ALIEN_COLS], Nave nave) {
         }
     }
     return 0;
+}
+
+int todos_aliens_destruidos(Jogo *jogo) {
+    for(int i = 0; i < jogo->alien_rows; i++){
+        for(int j = 0; j < jogo->alien_cols; j++){
+            if(jogo->aliens[i][j].ativo){
+                return 0; // Found an active alien
+            }
+        }
+    }
+    return 1; // All aliens are destroyed
 }
 
 void draw_scenario(){
@@ -249,6 +273,13 @@ void draw_nave(Nave nave){
                             nave.cor);
 }
 
+void draw_pontuacao(int pontuacao, ALLEGRO_FONT *font){
+    char score_text[50];
+    sprintf(score_text, "Score: %d", pontuacao);
+    al_draw_text(font, al_map_rgb(255, 255, 255), 10, SCREEN_H - GRASS_H - 40, 
+                 ALLEGRO_ALIGN_LEFT, score_text);
+}
+
 void update_nave(Nave *nave){
     if(nave->dir && nave->x + nave->vel <= SCREEN_W) {
         nave->x += nave->vel;
@@ -258,7 +289,155 @@ void update_nave(Nave *nave){
     }
 }
 
- 
+void init_jogo(Jogo *jogo, Dificuldade dificuldade){
+    switch(dificuldade){
+        case DIFICULDADE_FACIL:
+            jogo->alien_rows = 4;
+            jogo->alien_cols = 5;
+            jogo->alien_vel = 1;
+            jogo->pontos_por_alien = 10;
+            break;
+        case DIFICULDADE_NORMAL:
+            jogo->alien_rows = 5;
+            jogo->alien_cols = 5;
+            jogo->alien_vel = 2;
+            jogo->pontos_por_alien = 15;
+            break;
+        case DIFICULDADE_DIFICIL:
+            jogo->alien_rows = 5;
+            jogo->alien_cols = 6;
+            jogo->alien_vel = 3;
+            jogo->pontos_por_alien = 20;
+            break;
+    }
+    init_aliens(jogo);
+}
+
+void draw_menu(ALLEGRO_FONT *font, Dificuldade dificuldade_atual){
+    al_clear_to_color(al_map_rgb(0,0,0));
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 100, 
+                 ALLEGRO_ALIGN_CENTER, "SPACE INVADERS");
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 200, 
+                 ALLEGRO_ALIGN_CENTER, "1 - Iniciar Jogo");
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 250, 
+                 ALLEGRO_ALIGN_CENTER, "2 - Alterar Dificuldade");
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 300, 
+                 ALLEGRO_ALIGN_CENTER, "3 - Sair");
+    
+    char dificuldade_text[50];
+    switch(dificuldade_atual){
+        case DIFICULDADE_FACIL:
+            sprintf(dificuldade_text, "Dificuldade Atual: FACIL");
+            break;
+        case DIFICULDADE_NORMAL:
+            sprintf(dificuldade_text, "Dificuldade Atual: NORMAL");
+            break;
+        case DIFICULDADE_DIFICIL:
+            sprintf(dificuldade_text, "Dificuldade Atual: DIFICIL");
+            break;
+    }
+    
+    al_draw_text(font, al_map_rgb(255, 255, 0), SCREEN_W/2, 350, 
+                 ALLEGRO_ALIGN_CENTER, dificuldade_text);
+    
+    // Show current high score
+    int recorde_atual = ler_recorde();
+    char recorde_text[100];
+    sprintf(recorde_text, "High Score: %d", recorde_atual);
+    al_draw_text(font, al_map_rgb(0, 255, 255), SCREEN_W/2, 400, 
+                 ALLEGRO_ALIGN_CENTER, recorde_text);
+    
+    al_flip_display();
+}
+
+void draw_dificuldade_menu(ALLEGRO_FONT *font){
+    al_clear_to_color(al_map_rgb(0,0,0));
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 100, 
+                 ALLEGRO_ALIGN_CENTER, "SELECIONAR DIFICULDADE");
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 200, 
+                 ALLEGRO_ALIGN_CENTER, "1 - FACIL (4x5 aliens, vel=1, 10pts)");
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 250, 
+                 ALLEGRO_ALIGN_CENTER, "2 - NORMAL (5x5 aliens, vel=2, 15pts)");
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 300, 
+                 ALLEGRO_ALIGN_CENTER, "3 - DIFICIL (5x6 aliens, vel=3, 20pts)");
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 350, 
+                 ALLEGRO_ALIGN_CENTER, "0 - Voltar");
+    
+    al_flip_display();
+}
+
+int ler_recorde(){
+    FILE *arquivo = fopen("recorde.txt", "r");
+    int recorde = 0;
+    
+    if(arquivo != NULL){
+        fscanf(arquivo, "%d", &recorde);
+        fclose(arquivo);
+    }
+    
+    return recorde;
+}
+
+void salvar_recorde(int novo_recorde){
+    FILE *arquivo = fopen("recorde.txt", "w");
+    
+    if(arquivo != NULL){
+        fprintf(arquivo, "%d", novo_recorde);
+        fclose(arquivo);
+    }
+}
+
+void mostrar_resultado_final(ALLEGRO_FONT *font, int pontuacao, int vitoria){
+    int recorde_atual = ler_recorde();
+    int novo_recorde = 0;
+    
+    // Check if current score is higher than record
+    if(pontuacao > recorde_atual){
+        novo_recorde = 1;
+        salvar_recorde(pontuacao);
+        recorde_atual = pontuacao;
+    }
+    
+    al_clear_to_color(al_map_rgb(0,0,0));
+    
+    if(vitoria){
+        al_draw_text(font, al_map_rgb(0, 255, 0), SCREEN_W/2, SCREEN_H/2 - 80, 
+                     ALLEGRO_ALIGN_CENTER, "VICTORY! All aliens destroyed!");
+    } else {
+        al_draw_text(font, al_map_rgb(255, 0, 0), SCREEN_W/2, SCREEN_H/2 - 80, 
+                     ALLEGRO_ALIGN_CENTER, "GAME OVER!");
+    }
+    
+    char score_text[100];
+    sprintf(score_text, "Final Score: %d", pontuacao);
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, SCREEN_H/2 - 40, 
+                 ALLEGRO_ALIGN_CENTER, score_text);
+    
+    char recorde_text[100];
+    sprintf(recorde_text, "High Score: %d", recorde_atual);
+    al_draw_text(font, al_map_rgb(255, 255, 0), SCREEN_W/2, SCREEN_H/2, 
+                 ALLEGRO_ALIGN_CENTER, recorde_text);
+    
+    if(novo_recorde){
+        al_draw_text(font, al_map_rgb(0, 255, 255), SCREEN_W/2, SCREEN_H/2 + 40, 
+                     ALLEGRO_ALIGN_CENTER, "NEW RECORD!");
+    }
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, SCREEN_H/2 + 80, 
+                 ALLEGRO_ALIGN_CENTER, "Press any key to return to menu");
+    
+    al_flip_display();
+}
+
 int main(int argc, char **argv){
 	
 	ALLEGRO_DISPLAY *display = NULL;
@@ -346,113 +525,153 @@ int main(int argc, char **argv){
     //registra na fila os eventos de tempo: quando o tempo altera de t para t+1
 	al_register_event_source(event_queue, al_get_timer_event_source(timer));
 
-    Nave nave;
-    init_nave(&nave);
+    Dificuldade dificuldade_atual = DIFICULDADE_FACIL;
+    int jogando = 1;
 
-    Alien aliens[ALIEN_ROWS][ALIEN_COLS];
-    init_aliens(aliens);
+    while(jogando) {
+        int no_menu = 1;
+        int no_dificuldade = 0;
 
-    Tiro tiro;
-    init_tiro(&tiro);
+        while(no_menu) {
+            if(no_dificuldade) {
+                draw_dificuldade_menu(font);
+            } else {
+                draw_menu(font, dificuldade_atual);
+            }
 
-    int playing = 1;
-	//inicia o temporizador
-	al_start_timer(timer);
-	while(playing) 
+            ALLEGRO_EVENT ev;
+            al_wait_for_event(event_queue, &ev);
 
-	{
-		ALLEGRO_EVENT ev;
-		//espera por um evento e o armazena na variavel de evento ev
-		al_wait_for_event(event_queue, &ev);
-
-		//se o tipo de evento for um evento do temporizador, ou seja, se o tempo passou de t para t+1
-		if(ev.type == ALLEGRO_EVENT_TIMER) {
-
-            draw_scenario();
-
-            update_nave(&nave);
-
-            update_aliens(aliens);
-            
-            update_tiro(&tiro);
-
-            draw_nave(nave);
-
-            draw_aliens(aliens);
-            playing = !colisao_alien_solo(aliens) && !colisao_alien_nave(aliens, nave);
-
-            draw_tiro(tiro);
-            check_tiro_aliens_collision(&tiro, aliens);
-
-            //atualiza a tela (quando houver algo para mostrar)
-            al_flip_display();
-
-            if(al_get_timer_count(timer)%(int)FPS == 0)
-                printf("\n%d segundos se passaram...", (int)al_get_timer_count(timer)/(int)FPS);
-
-			//limpa a tela
-			//al_clear_to_color(al_map_rgb(0,0,0));
-
-			//aplica fisica
-			//desenha
-
-			//atualiza a tela (quando houver algo para mostrar)
-			//al_flip_display();
-			
-		}
-
-		//se o tipo de evento for o fechamento da tela (clique no x da janela)
-		else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
-			playing = 0;
-		}
-		//se o tipo de evento for um pressionar de uma tecla
-		else if(ev.type == ALLEGRO_EVENT_KEY_DOWN) { 
-			//imprime qual tecla foi
-			printf("\ncodigo tecla: %d", ev.keyboard.keycode);
-
-            switch(ev.keyboard.keycode){
-                
-                case ALLEGRO_KEY_A:
-                    nave.esq = 1;
-                break;
-
-                case ALLEGRO_KEY_D:
-                    nave.dir = 1;
-                break;
-                
-                case ALLEGRO_KEY_SPACE:
-                    disparar_tiro(&tiro, nave);
-                break;
-
+            if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
+                no_menu = 0;
+                jogando = 0;
+            }
+            else if(ev.type == ALLEGRO_EVENT_KEY_DOWN) {
+                if(no_dificuldade) {
+                    switch(ev.keyboard.keycode){
+                        case ALLEGRO_KEY_1:
+                            dificuldade_atual = DIFICULDADE_FACIL;
+                            no_dificuldade = 0;
+                            break;
+                        case ALLEGRO_KEY_2:
+                            dificuldade_atual = DIFICULDADE_NORMAL;
+                            no_dificuldade = 0;
+                            break;
+                        case ALLEGRO_KEY_3:
+                            dificuldade_atual = DIFICULDADE_DIFICIL;
+                            no_dificuldade = 0;
+                            break;
+                        case ALLEGRO_KEY_0:
+                            no_dificuldade = 0;
+                            break;
+                    }
+                } else {
+                    switch(ev.keyboard.keycode){
+                        case ALLEGRO_KEY_1:
+                            no_menu = 0; // Start game
+                            break;
+                        case ALLEGRO_KEY_2:
+                            no_dificuldade = 1;
+                            break;
+                        case ALLEGRO_KEY_3:
+                            no_menu = 0; // Exit
+                            jogando = 0;
+                            break;
+                    }
+                }
             }
         }
-        //se o tipo de evento for um pressionar de uma tecla
-		else if(ev.type == ALLEGRO_EVENT_KEY_UP) { 
-			//imprime qual tecla foi
-			printf("\ncodigo tecla: %d", ev.keyboard.keycode);
 
-            switch(ev.keyboard.keycode){
-                
-                case ALLEGRO_KEY_A:
-                    nave.esq = 0;
-                break;
+        if(jogando) { // Start game
+            Nave nave;
+            init_nave(&nave);
 
-                case ALLEGRO_KEY_D:
-                    nave.dir = 0;
-                break;
-            
+            Jogo jogo;
+            init_jogo(&jogo, dificuldade_atual);
+
+            Tiro tiro;
+            init_tiro(&tiro);
+
+            int pontuacao = 0;
+            int vitoria = 0;
+            int playing = 1;
+
+            //inicia o temporizador
+            al_start_timer(timer);
+            while(playing) {
+                ALLEGRO_EVENT ev;
+                al_wait_for_event(event_queue, &ev);
+
+                if(ev.type == ALLEGRO_EVENT_TIMER) {
+                    draw_scenario();
+                    update_nave(&nave);
+                    update_aliens(&jogo);
+                    update_tiro(&tiro);
+                    draw_nave(nave);
+                    draw_aliens(&jogo);
+                    draw_tiro(tiro);
+                    check_tiro_aliens_collision(&tiro, &jogo, &pontuacao);
+                    draw_pontuacao(pontuacao, font);
+                    al_flip_display();
+                }
+                else if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
+                    playing = 0;
+                    jogando = 0;
+                }
+                else if(ev.type == ALLEGRO_EVENT_KEY_DOWN) { 
+                    switch(ev.keyboard.keycode){
+                        case ALLEGRO_KEY_A:
+                            nave.esq = 1;
+                            break;
+                        case ALLEGRO_KEY_D:
+                            nave.dir = 1;
+                            break;
+                        case ALLEGRO_KEY_SPACE:
+                            disparar_tiro(&tiro, nave);
+                            break;
+                    }
+                }
+                else if(ev.type == ALLEGRO_EVENT_KEY_UP) { 
+                    switch(ev.keyboard.keycode){
+                        case ALLEGRO_KEY_A:
+                            nave.esq = 0;
+                            break;
+                        case ALLEGRO_KEY_D:
+                            nave.dir = 0;
+                            break;
+                    }
+                }
+
+                // Check for victory or defeat
+                if(todos_aliens_destruidos(&jogo)){
+                    vitoria = 1;
+                    playing = 0;
+                }
+                if(colisao_alien_solo(&jogo) || colisao_alien_nave(&jogo, nave)){
+                    playing = 0;
+                }
             }
-		}
-	} //fim do while
+
+            // Show end game message
+            mostrar_resultado_final(font, pontuacao, vitoria);
+            
+            // Wait for key press
+            ALLEGRO_EVENT ev;
+            do {
+                al_wait_for_event(event_queue, &ev);
+                if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
+                    jogando = 0;
+                    break;
+                }
+            } while(ev.type != ALLEGRO_EVENT_KEY_DOWN);
+        }
+    }
      
 	//procedimentos de fim de jogo (fecha a tela, limpa a memoria, etc)
-	
- 
 	al_destroy_timer(timer);
 	al_destroy_display(display);
 	al_destroy_event_queue(event_queue);
 	al_destroy_font(font);
    
- 
 	return 0;
 }
