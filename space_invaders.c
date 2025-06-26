@@ -344,6 +344,13 @@ void draw_menu(ALLEGRO_FONT *font, Dificuldade dificuldade_atual){
     al_draw_text(font, al_map_rgb(255, 255, 0), SCREEN_W/2, 350, 
                  ALLEGRO_ALIGN_CENTER, dificuldade_text);
     
+    // Show current high score
+    int recorde_atual = ler_recorde();
+    char recorde_text[100];
+    sprintf(recorde_text, "High Score: %d", recorde_atual);
+    al_draw_text(font, al_map_rgb(0, 255, 255), SCREEN_W/2, 400, 
+                 ALLEGRO_ALIGN_CENTER, recorde_text);
+    
     al_flip_display();
 }
 
@@ -364,6 +371,69 @@ void draw_dificuldade_menu(ALLEGRO_FONT *font){
     
     al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, 350, 
                  ALLEGRO_ALIGN_CENTER, "0 - Voltar");
+    
+    al_flip_display();
+}
+
+int ler_recorde(){
+    FILE *arquivo = fopen("recorde.txt", "r");
+    int recorde = 0;
+    
+    if(arquivo != NULL){
+        fscanf(arquivo, "%d", &recorde);
+        fclose(arquivo);
+    }
+    
+    return recorde;
+}
+
+void salvar_recorde(int novo_recorde){
+    FILE *arquivo = fopen("recorde.txt", "w");
+    
+    if(arquivo != NULL){
+        fprintf(arquivo, "%d", novo_recorde);
+        fclose(arquivo);
+    }
+}
+
+void mostrar_resultado_final(ALLEGRO_FONT *font, int pontuacao, int vitoria){
+    int recorde_atual = ler_recorde();
+    int novo_recorde = 0;
+    
+    // Check if current score is higher than record
+    if(pontuacao > recorde_atual){
+        novo_recorde = 1;
+        salvar_recorde(pontuacao);
+        recorde_atual = pontuacao;
+    }
+    
+    al_clear_to_color(al_map_rgb(0,0,0));
+    
+    if(vitoria){
+        al_draw_text(font, al_map_rgb(0, 255, 0), SCREEN_W/2, SCREEN_H/2 - 80, 
+                     ALLEGRO_ALIGN_CENTER, "VICTORY! All aliens destroyed!");
+    } else {
+        al_draw_text(font, al_map_rgb(255, 0, 0), SCREEN_W/2, SCREEN_H/2 - 80, 
+                     ALLEGRO_ALIGN_CENTER, "GAME OVER!");
+    }
+    
+    char score_text[100];
+    sprintf(score_text, "Final Score: %d", pontuacao);
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, SCREEN_H/2 - 40, 
+                 ALLEGRO_ALIGN_CENTER, score_text);
+    
+    char recorde_text[100];
+    sprintf(recorde_text, "High Score: %d", recorde_atual);
+    al_draw_text(font, al_map_rgb(255, 255, 0), SCREEN_W/2, SCREEN_H/2, 
+                 ALLEGRO_ALIGN_CENTER, recorde_text);
+    
+    if(novo_recorde){
+        al_draw_text(font, al_map_rgb(0, 255, 255), SCREEN_W/2, SCREEN_H/2 + 40, 
+                     ALLEGRO_ALIGN_CENTER, "NEW RECORD!");
+    }
+    
+    al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, SCREEN_H/2 + 80, 
+                 ALLEGRO_ALIGN_CENTER, "Press any key to return to menu");
     
     al_flip_display();
 }
@@ -583,24 +653,7 @@ int main(int argc, char **argv){
             }
 
             // Show end game message
-            al_clear_to_color(al_map_rgb(0,0,0));
-            if(vitoria){
-                al_draw_text(font, al_map_rgb(0, 255, 0), SCREEN_W/2, SCREEN_H/2 - 40, 
-                             ALLEGRO_ALIGN_CENTER, "VICTORY! All aliens destroyed!");
-            } else {
-                al_draw_text(font, al_map_rgb(255, 0, 0), SCREEN_W/2, SCREEN_H/2 - 40, 
-                             ALLEGRO_ALIGN_CENTER, "GAME OVER!");
-            }
-            
-            char score_text[100];
-            sprintf(score_text, "Final Score: %d", pontuacao);
-            al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, SCREEN_H/2, 
-                         ALLEGRO_ALIGN_CENTER, score_text);
-            
-            al_draw_text(font, al_map_rgb(255, 255, 255), SCREEN_W/2, SCREEN_H/2 + 40, 
-                         ALLEGRO_ALIGN_CENTER, "Press any key to return to menu");
-            
-            al_flip_display();
+            mostrar_resultado_final(font, pontuacao, vitoria);
             
             // Wait for key press
             ALLEGRO_EVENT ev;
