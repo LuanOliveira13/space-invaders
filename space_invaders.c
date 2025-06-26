@@ -128,7 +128,7 @@ int colisao_tiro_alien(Tiro tiro, Alien alien){
             tiro_y_bottom > alien_y_top);
 }
 
-void check_tiro_aliens_collision(Tiro *tiro, Alien aliens[ALIEN_ROWS][ALIEN_COLS]){
+void check_tiro_aliens_collision(Tiro *tiro, Alien aliens[ALIEN_ROWS][ALIEN_COLS], int *pontuacao){
     if(!tiro->ativo) return;
     
     for(int i = 0; i < ALIEN_ROWS; i++){
@@ -136,6 +136,7 @@ void check_tiro_aliens_collision(Tiro *tiro, Alien aliens[ALIEN_ROWS][ALIEN_COLS
             if(colisao_tiro_alien(*tiro, aliens[i][j])){
                 aliens[i][j].ativo = 0; // Destroy alien
                 tiro->ativo = 0; // Destroy shot
+                (*pontuacao) += 10; // Add 10 points for each alien destroyed
                 return; // Exit after first collision
             }
         }
@@ -249,6 +250,13 @@ void draw_nave(Nave nave){
                             nave.cor);
 }
 
+void draw_pontuacao(int pontuacao, ALLEGRO_FONT *font){
+    char score_text[50];
+    sprintf(score_text, "Score: %d", pontuacao);
+    al_draw_text(font, al_map_rgb(255, 255, 255), 10, SCREEN_H - GRASS_H - 40, 
+                 ALLEGRO_ALIGN_LEFT, score_text);
+}
+
 void update_nave(Nave *nave){
     if(nave->dir && nave->x + nave->vel <= SCREEN_W) {
         nave->x += nave->vel;
@@ -355,6 +363,8 @@ int main(int argc, char **argv){
     Tiro tiro;
     init_tiro(&tiro);
 
+    int pontuacao = 0;
+
     int playing = 1;
 	//inicia o temporizador
 	al_start_timer(timer);
@@ -382,7 +392,9 @@ int main(int argc, char **argv){
             playing = !colisao_alien_solo(aliens) && !colisao_alien_nave(aliens, nave);
 
             draw_tiro(tiro);
-            check_tiro_aliens_collision(&tiro, aliens);
+            check_tiro_aliens_collision(&tiro, aliens, &pontuacao);
+
+            draw_pontuacao(pontuacao, font);
 
             //atualiza a tela (quando houver algo para mostrar)
             al_flip_display();
