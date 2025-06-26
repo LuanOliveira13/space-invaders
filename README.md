@@ -1,112 +1,261 @@
 # DOCUMENTAÇÃO – SPACE INVADERS ALLEGRO
 
 **Nome:** Luan Henrry Vidal Oliveira  
-**Disciplina:** PDS 1
+**Disciplina:** PDS 1  
 **Professor:** Pedro O.S. Vaz de Melo  
 
-## Como o jogo funciona
+## 📖 Descrição
 
-O jogo Space Invaders é uma recriação do clássico arcade. No menu principal, o jogador pode selecionar entre três opções: iniciar jogo, alterar dificuldade ou sair. O jogo possui três níveis de dificuldade: Fácil (4x5 aliens, velocidade 1, 10 pontos), Normal (5x5 aliens, velocidade 2, 15 pontos) e Difícil (5x6 aliens, velocidade 3, 20 pontos).
+Space Invaders é uma recriação completa do clássico jogo arcade desenvolvido em C usando a biblioteca Allegro 5. O jogo inclui sistema de menu, múltiplos níveis de dificuldade, sistema de pontuação e recordes persistentes.
 
-Durante o jogo, o jogador controla uma nave na parte inferior da tela usando as teclas A (esquerda) e D (direita). A tecla ESPAÇO dispara um tiro vertical que pode destruir os aliens. Os aliens se movem horizontalmente em grupo, e quando qualquer alien atinge as bordas da tela, todos descem uma linha e invertem a direção.
+## 🎮 Como Jogar
 
-O jogo termina quando todos os aliens são destruídos (vitória) ou quando um alien atinge o solo ou colide com a nave do jogador (derrota). O sistema mantém um recorde da maior pontuação alcançada, salvando-a em um arquivo de texto.
+### Menu Principal
+O jogo possui um menu principal com três opções:
+- **1 - Iniciar Jogo**: Começa uma nova partida
+- **2 - Alterar Dificuldade**: Permite escolher entre três níveis
+- **3 - Sair**: Encerra o jogo
 
-## Estruturas de Dados
+### Níveis de Dificuldade
+- **Fácil**: 4×5 aliens, velocidade 1, 10 pontos por alien (máx: 200 pontos)
+- **Normal**: 5×5 aliens, velocidade 2, 15 pontos por alien (máx: 375 pontos)  
+- **Difícil**: 5×6 aliens, velocidade 3, 20 pontos por alien (máx: 600 pontos)
 
-Para construir o jogo, foram criadas e definidas 5 estruturas de dados principais:
+### Controles
+- **A**: Move a nave para esquerda
+- **D**: Move a nave para direita
+- **ESPAÇO**: Dispara tiro (um por vez)
+- **1/2/3**: Navegação nos menus
+- **0**: Voltar (no menu de dificuldade)
 
-**1. Dificuldade (enum):** Define os três níveis de dificuldade (FACIL, NORMAL, DIFICIL) com suas respectivas configurações de aliens, velocidade e pontuação.
+### Objetivo
+Destrua todos os alienígenas antes que eles atinjam o solo ou colidam com sua nave. Os aliens se movem em grupo e descem quando atingem as bordas da tela.
 
-**2. Nave:** Representa a nave controlada pelo jogador. Guarda informações como posição x, velocidade, direção de movimento (esquerda/direita) e cor.
+## 🏗️ Estruturas de Dados
 
-**3. Alien:** Representa cada alien inimigo. Guarda posição x e y, velocidade horizontal e vertical, cor (aleatória) e status ativo/inativo.
+### 1. **Dificuldade** (enum)
+Define os três níveis de dificuldade com suas configurações específicas.
 
-**4. Tiro:** Representa os projéteis disparados pela nave. Guarda posição x e y, status ativo/inativo e cor.
+### 2. **Nave**
+```c
+typedef struct Nave {
+    float x;                    // Posição horizontal
+    float velocidade;           // Velocidade de movimento
+    int direita, esquerda;      // Flags de movimento
+    ALLEGRO_COLOR cor;          // Cor da nave
+} Nave;
+```
 
-**5. Jogo:** Estrutura principal que contém a configuração do jogo atual, incluindo número de linhas e colunas de aliens, velocidade dos aliens, pontos por alien destruído e a matriz de aliens (máximo 6x6).
+### 3. **Alien**
+```c
+typedef struct Alien {
+    float x, y;                 // Posição
+    float velocidade_x, velocidade_y; // Velocidades
+    ALLEGRO_COLOR cor;          // Cor (aleatória)
+    int ativo;                  // Status ativo/destruído
+} Alien;
+```
 
-O jogo utiliza constantes para definir dimensões da tela (960x540), tamanhos dos elementos (nave, aliens, tiros), espaçamentos entre aliens (30 pixels mínimo) e velocidade do tiro.
+### 4. **Tiro**
+```c
+typedef struct Tiro {
+    float x, y;                 // Posição
+    int ativo;                  // Status ativo/inativo
+    ALLEGRO_COLOR cor;          // Cor do tiro
+} Tiro;
+```
 
-## Como o código funciona
+### 5. **Jogo**
+```c
+typedef struct Jogo {
+    int linhas_alien;           // Número de linhas
+    int colunas_alien;          // Número de colunas
+    float velocidade_alien;     // Velocidade base
+    int pontos_por_alien;       // Pontos por alien
+    Alien aliens[6][6];         // Matriz de aliens
+} Jogo;
+```
 
-O programa principal é dividido em três grandes partes: inicialização e menu, loop principal do jogo, e sistema de recordes.
+## 🔧 Constantes do Jogo
 
-**1. Inicialização e Menu:**
-- Inicialização do Allegro e seus módulos (primitivas, fontes, imagens)
-- Criação da janela, timer e fila de eventos
-- Loop do menu principal com três opções
-- Menu de seleção de dificuldade com configurações específicas
-- Exibição do recorde atual no menu
+```c
+const int LARGURA_TELA = 960;
+const int ALTURA_TELA = 540;
+const int LARGURA_NAVE = 100;
+const int ALTURA_NAVE = 50;
+const int LARGURA_ALIEN = 50;
+const int ALTURA_ALIEN = 25;
+const float VELOCIDADE_TIRO = 8;
+const float FPS = 60;
+```
 
-**2. Loop Principal do Jogo:**
-- Inicialização da nave, aliens e tiro baseada na dificuldade selecionada
-- Loop de eventos que processa timer, teclado e fechamento de janela
-- Atualização de posições (nave, aliens, tiro) a cada frame
-- Verificação de colisões (tiro-alien, alien-solo, alien-nave)
-- Desenho de todos os elementos na tela
-- Verificação de condições de vitória/derrota
+## 📏 Distâncias e Limites do Jogo
 
-**3. Sistema de Recordes:**
-- Leitura do recorde atual do arquivo "recorde.txt"
-- Comparação da pontuação atual com o recorde
-- Salvamento automático de novos recordes
-- Exibição de mensagem especial para novos recordes
+### 🎯 **Condições de Game Over**
 
-## Funções Principais
+O jogo termina quando os alienígenas atingem certas distâncias críticas:
 
-### Inicialização e Configuração
-- **`void init_nave(Nave *nave)`**: Inicializa a nave na posição central da tela
-- **`void init_alien(Alien *alien, int row, int col, float vel)`**: Inicializa um alien com posição, velocidade e cor aleatória
-- **`void init_aliens(Jogo *jogo)`**: Inicializa todos os aliens da matriz baseada na dificuldade
-- **`void init_jogo(Jogo *jogo, Dificuldade dificuldade)`**: Configura o jogo com parâmetros da dificuldade selecionada
-- **`void init_tiro(Tiro *tiro)`**: Inicializa o tiro como inativo
+#### **1. Colisão com a Grama (Solo)**
+- **Distância vertical**: Quando qualquer alien atinge a linha Y = 480 pixels
+- **Cálculo**: `alien.y + ALTURA_ALIEN > ALTURA_TELA - ALTURA_GRAMA`
+- **Posição exata**: Y = 540 - 60 = 480 pixels (base da grama)
+- **Resultado**: Game Over imediato
 
-### Controles e Movimento
-- **`void update_nave(Nave *nave)`**: Atualiza a posição da nave baseada nas teclas pressionadas
-- **`void update_aliens(Jogo *jogo)`**: Move todos os aliens horizontalmente e inverte direção quando atingem bordas
-- **`void update_tiro(Tiro *tiro)`**: Move o tiro verticalmente para cima e o desativa quando sai da tela
-- **`void disparar_tiro(Tiro *tiro, Nave nave)`**: Cria um novo tiro na posição da nave (apenas um por vez)
+#### **2. Colisão com a Nave**
+- **Posição da nave**: Centro na linha Y = 510 pixels (ALTURA_TELA - ALTURA_GRAMA/2)
+- **Dimensões da nave**: 
+  - Largura: 100 pixels (LARGURA_NAVE)
+  - Altura: 50 pixels (ALTURA_NAVE)
+  - Formato: Triângulo apontando para cima
+- **Área de colisão da nave**:
+  - **Horizontal**: X ± 50 pixels (nave.x ± LARGURA_NAVE/2)
+  - **Vertical**: Y = 460 a 510 pixels (nave_y_topo a nave_y_base)
+- **Detecção**: Colisão retangular entre alien (50×25) e área retangular da nave (100×50)
+- **Resultado**: Game Over imediato
 
-### Colisões e Detecção
-- **`int colisao_tiro_alien(Tiro tiro, Alien alien)`**: Verifica colisão entre tiro e alien
-- **`int colisao_alien_solo(Jogo *jogo)`**: Verifica se algum alien atingiu o solo
-- **`int colisao_alien_nave(Jogo *jogo, Nave nave)`**: Verifica colisão entre aliens e nave
-- **`int check_boundary_collision(Jogo *jogo)`**: Verifica se algum alien atingiu as bordas da tela
-- **`int todos_aliens_destruidos(Jogo *jogo)`**: Verifica se todos os aliens foram eliminados
+### 🔍 **Como Funciona a Detecção de Colisão**
 
-### Sistema de Pontuação e Recordes
-- **`void check_tiro_aliens_collision(Tiro *tiro, Jogo *jogo, int *pontuacao)`**: Processa colisão tiro-alien e incrementa pontuação
-- **`int ler_recorde()`**: Lê o recorde atual do arquivo "recorde.txt"
-- **`void salvar_recorde(int novo_recorde)`**: Salva novo recorde no arquivo
-- **`void mostrar_resultado_final(ALLEGRO_FONT *font, int pontuacao, int vitoria)`**: Exibe tela de resultado com pontuação e recorde
+#### **Visual vs. Colisão**
+- **Visual da nave**: Triângulo azul apontando para cima
+- **Área de colisão**: Retângulo completo de 100×50 pixels
+- **Por que retângulo?**: Mais simples e eficiente para detectar colisões
 
-### Interface e Desenho
-- **`void draw_scenario()`**: Desenha o fundo preto e a grama na parte inferior
-- **`void draw_nave(Nave nave)`**: Desenha a nave como triângulo azul
-- **`void draw_alien(Alien alien)`**: Desenha alien como retângulo colorido
-- **`void draw_aliens(Jogo *jogo)`**: Desenha todos os aliens ativos
-- **`void draw_tiro(Tiro tiro)`**: Desenha o tiro como retângulo amarelo
-- **`void draw_pontuacao(int pontuacao, ALLEGRO_FONT *font)`**: Exibe pontuação atual no canto inferior esquerdo
-- **`void draw_menu(ALLEGRO_FONT *font, Dificuldade dificuldade_atual)`**: Desenha menu principal com opções e recorde
-- **`void draw_dificuldade_menu(ALLEGRO_FONT *font)`**: Desenha menu de seleção de dificuldade
+#### **Cálculo da Área de Colisão**
+```c
+// Área retangular da nave (para colisão)
+nave_x_esquerda = nave.x - 50;  // nave.x - LARGURA_NAVE/2
+nave_x_direita = nave.x + 50;   // nave.x + LARGURA_NAVE/2
+nave_y_topo = 460;              // nave_y_base - ALTURA_NAVE
+nave_y_fundo = 510;             // nave_y_base
+```
 
-### Configurações por Dificuldade
-- **Fácil**: 4 linhas × 5 colunas = 20 aliens, velocidade 1, 10 pontos por alien (máximo 200 pontos)
-- **Normal**: 5 linhas × 5 colunas = 25 aliens, velocidade 2, 15 pontos por alien (máximo 375 pontos)
-- **Difícil**: 5 linhas × 6 colunas = 30 aliens, velocidade 3, 20 pontos por alien (máximo 600 pontos)
+#### **Verificação de Colisão**
+```c
+// Se alien sobrepõe a área retangular da nave
+if(alien_x_esquerda < nave_x_direita && 
+   alien_x_direita > nave_x_esquerda && 
+   alien_y_topo < nave_y_fundo && 
+   alien_y_fundo > nave_y_topo) {
+    // GAME OVER!
+}
+```
 
-## Controles
+#### **Tiros**
+- **Tamanho**: 4×10 pixels
+- **Velocidade**: 8 pixels por frame (para cima)
+- **Posição inicial**: Centro da nave (X = nave.x, Y = 460)
+- **Limite superior**: Y = -10 pixels (desaparece da tela)
 
-- **A**: Move nave para esquerda
-- **D**: Move nave para direita
-- **ESPAÇO**: Dispara tiro (apenas um por vez)
-- **1**: Iniciar jogo / Selecionar dificuldade fácil
-- **2**: Alterar dificuldade / Selecionar dificuldade normal
-- **3**: Sair do jogo / Selecionar dificuldade difícil
-- **0**: Voltar ao menu principal (no menu de dificuldade)
+### 🔄 **Movimento dos Aliens**
 
-## Arquivos Gerados
+#### **Padrão de Movimento**
+- **Horizontal**: Movimento sincronizado em grupo
+- **Vertical**: Descida de 25 pixels quando atingem bordas
+- **Inversão**: Direção muda quando X = 0 ou X = 910
 
-- **recorde.txt**: Arquivo de texto que armazena a maior pontuação alcançada
-- O arquivo é criado automaticamente na primeira execução e atualizado quando há novos recordes
+#### **Velocidades por Dificuldade**
+- **Fácil**: 1 pixel/frame
+- **Normal**: 2 pixels/frame  
+- **Difícil**: 3 pixels/frame
+
+## 🚀 Funcionalidades Principais
+
+### Sistema de Menu
+- Menu principal com navegação por teclas
+- Menu de seleção de dificuldade
+- Exibição do recorde atual
+- Interface intuitiva e responsiva
+
+### Sistema de Jogo
+- Movimento suave da nave
+- Movimento sincronizado dos aliens
+- Sistema de tiro único
+- Detecção de colisões precisa
+- Verificação de vitória/derrota
+
+### Sistema de Recordes
+- Persistência de dados em arquivo
+- Atualização automática de recordes
+- Exibição de "NOVO RECORDE!" quando aplicável
+- Arquivo `recorde.txt` criado automaticamente
+
+## 📁 Estrutura do Projeto
+
+```
+space-invaders/
+├── space_invaders.c    # Código fonte principal
+├── README.md          # Esta documentação
+├── Makefile           # Arquivo de compilação
+├── arial.ttf          # Fonte TrueType para interface
+└── recorde.txt        # Arquivo de recordes (gerado automaticamente)
+```
+
+## 🛠️ Compilação e Execução
+
+### Pré-requisitos
+- GCC (GNU Compiler Collection)
+- Allegro 5 e suas bibliotecas:
+  - `liballegro5-dev`
+  - `liballegro5-ttf-dev`
+  - `liballegro5-primitives-dev`
+  - `liballegro5-image-dev`
+
+### Instalação das Dependências (Ubuntu/Debian)
+```bash
+sudo apt-get install gcc make
+sudo apt-get install liballegro5-dev liballegro5-ttf-dev liballegro5-primitives-dev liballegro5-image-dev
+```
+
+### Compilação
+```bash
+make
+```
+
+### Execução
+```bash
+./space_invaders
+```
+
+## 🎯 Funcões Principais
+
+### Inicialização
+- `inicializar_nave()` - Configura a nave do jogador
+- `inicializar_alien()` - Cria um alienígena
+- `inicializar_aliens()` - Inicializa todos os aliens
+- `inicializar_jogo()` - Configura o jogo baseado na dificuldade
+
+### Atualização
+- `atualizar_nave()` - Processa movimento da nave
+- `atualizar_aliens()` - Move os aliens e inverte direção
+- `atualizar_tiro()` - Move o tiro e verifica saída da tela
+
+### Colisões
+- `verificar_colisao_tiro_alien()` - Detecta tiro atingindo alien
+- `verificar_colisao_alien_solo()` - Verifica alien no solo
+- `verificar_colisao_alien_nave()` - Detecta colisão alien-nave
+- `todos_aliens_destruidos()` - Verifica vitória
+
+### Interface
+- `desenhar_menu()` - Menu principal
+- `desenhar_menu_dificuldade()` - Menu de dificuldade
+- `mostrar_resultado_final()` - Tela de fim de jogo
+- `desenhar_pontuacao()` - Exibe pontuação atual
+
+### Recordes
+- `ler_recorde()` - Lê recorde do arquivo
+- `salvar_recorde()` - Salva novo recorde
+
+## 📊 Características Técnicas
+
+- **Linguagem**: C (padrão C99)
+- **Biblioteca**: Allegro 5
+- **Resolução**: 960×540 pixels
+- **FPS**: 60 quadros por segundo
+- **Compatibilidade**: Linux (testado em Ubuntu)
+
+## 🎨 Elementos Visuais
+
+- **Nave**: Triângulo azul na parte inferior
+- **Aliens**: Retângulos coloridos (cores aleatórias)
+- **Tiros**: Retângulos amarelos
+- **Cenário**: Fundo preto com grama verde na base
