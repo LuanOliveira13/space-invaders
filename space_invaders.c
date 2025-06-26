@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_font.h>
@@ -95,7 +96,7 @@ void salvar_recorde(int novo_recorde);
  */
 void inicializar_nave(Nave *nave){
     nave->x = LARGURA_TELA/2;
-    nave->velocidade = 1;
+    nave->velocidade = 3;
     nave->direita = 0;
     nave->esquerda = 0;
     nave->cor = al_map_rgb(0, 0, 255);
@@ -750,11 +751,52 @@ int main(void){
             al_start_timer(temporizador);
             
             // Loop principal da partida
+            // NOTA: Usa al_get_next_event() em vez de al_wait_for_event() para evitar
+            // bloqueio quando a janela perde o foco, garantindo responsividade consistente
             while(jogando_partida) {
                 ALLEGRO_EVENT evento;
-                al_wait_for_event(fila_eventos, &evento);
-
-                if(evento.type == ALLEGRO_EVENT_TIMER) {
+                bool redraw = false;
+                
+                // Processa todos os eventos pendentes sem bloquear
+                // Isso garante que os controles respondam imediatamente mesmo quando
+                // a janela não está em foco
+                while(al_get_next_event(fila_eventos, &evento)) {
+                    if(evento.type == ALLEGRO_EVENT_TIMER) {
+                        redraw = true;
+                    }
+                    else if(evento.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
+                        jogando_partida = 0;
+                        jogando = 0;
+                        break;
+                    }
+                    else if(evento.type == ALLEGRO_EVENT_KEY_DOWN) { 
+                        switch(evento.keyboard.keycode){
+                            case ALLEGRO_KEY_A:
+                                nave.esquerda = 1;
+                                break;
+                            case ALLEGRO_KEY_D:
+                                nave.direita = 1;
+                                break;
+                            case ALLEGRO_KEY_SPACE:
+                                disparar_tiro(&tiro, nave);
+                                break;
+                        }
+                    }
+                    else if(evento.type == ALLEGRO_EVENT_KEY_UP) { 
+                        switch(evento.keyboard.keycode){
+                            case ALLEGRO_KEY_A:
+                                nave.esquerda = 0;
+                                break;
+                            case ALLEGRO_KEY_D:
+                                nave.direita = 0;
+                                break;
+                        }
+                    }
+                }
+                
+                // Só atualiza e desenha se o temporizador disparou
+                // Isso mantém a taxa de quadros consistente
+                if(redraw) {
                     desenhar_cenario();
                     atualizar_nave(&nave);
                     atualizar_aliens(&jogo);
@@ -766,33 +808,6 @@ int main(void){
                     desenhar_pontuacao(pontuacao, fonte);
                     al_flip_display();
                 }
-                else if(evento.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
-                    jogando_partida = 0;
-                    jogando = 0;
-                }
-                else if(evento.type == ALLEGRO_EVENT_KEY_DOWN) { 
-                    switch(evento.keyboard.keycode){
-                        case ALLEGRO_KEY_A:
-                            nave.esquerda = 1;
-                            break;
-                        case ALLEGRO_KEY_D:
-                            nave.direita = 1;
-                            break;
-                        case ALLEGRO_KEY_SPACE:
-                            disparar_tiro(&tiro, nave);
-                            break;
-                    }
-                }
-                else if(evento.type == ALLEGRO_EVENT_KEY_UP) { 
-                    switch(evento.keyboard.keycode){
-                        case ALLEGRO_KEY_A:
-                            nave.esquerda = 0;
-                            break;
-                        case ALLEGRO_KEY_D:
-                            nave.direita = 0;
-                            break;
-                    }
-                }
 
                 // Verifica vitória ou derrota
                 if(todos_aliens_destruidos(&jogo)){
@@ -802,6 +817,9 @@ int main(void){
                 if(verificar_colisao_alien_solo(&jogo) || verificar_colisao_alien_nave(&jogo, nave)){
                     jogando_partida = 0;
                 }
+                
+                // Pequena pausa para não consumir 100% da CPU
+                al_rest(0.001);
             }
 
             // Mostra mensagem de fim de jogo
