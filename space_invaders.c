@@ -21,7 +21,7 @@ const int ALTURA_NAVE = 50;
 
 // Constantes dos alienígenas
 const int LARGURA_ALIEN = 50;
-const int ALTURA_ALIEN = 25;
+const int ALTURA_ALIEN = 30;
 
 // Espaçamento entre alienígenas
 const int ESPACAMENTO_ALIEN_X = 80;  // 50 (largura do alien) + 30 (espaço) = 80
